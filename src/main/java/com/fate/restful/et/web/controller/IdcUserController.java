@@ -43,8 +43,14 @@ public class IdcUserController {
 		rst.setResultCode(ResultCode.HTTP_SUCCESS);
 		List<IdcUser> list = null;
 		PageInfo<IdcUser> page = null;
+		int pageNum = ResultCode.DEFAULT_PAGE_NUM;
+		int pageSize = ResultCode.DEFAULT_PAGE_SIZE;
+		if(u.getPagination() != null) {
+			pageNum = u.getPagination().getCurrentPage();
+			pageSize = u.getPagination().getPageSize();
+		}
 		try {
-			list = idcUserService.findAllUsers(u.getPagination().getCurrentPage(), u.getPagination().getPageSize());
+			list = idcUserService.findAllUsers(pageNum, pageSize);
 			page = new PageInfo<IdcUser>(list);
 			rst.setReturnObject(page);
 			if (CollectionUtils.isEmpty(list)) {
