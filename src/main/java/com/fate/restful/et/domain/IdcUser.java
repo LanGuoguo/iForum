@@ -1,9 +1,8 @@
 package com.fate.restful.et.domain;
 
 import java.io.Serializable;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+
+import com.fate.restful.et.common.bean.Pagination;
 /**
  * 
  * @author WangGang
@@ -60,6 +59,17 @@ public class IdcUser implements Serializable {
 	 */
 	private String isDeleted;
 	
+	/**
+	 * 分页
+	 */
+	private Pagination pagination;
+	
+	public Pagination getPagination() {
+		return pagination;
+	}
+	public void setPagination(Pagination pagination) {
+		this.pagination = pagination;
+	}
 	public long getId() {
 		return id;
 	}

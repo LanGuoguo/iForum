@@ -5,8 +5,10 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.fate.restful.et.common.bean.ResultCode;
 import com.fate.restful.et.domain.IdcUser;
 import com.fate.restful.et.persistence.IdcUserMapper;
+import com.github.pagehelper.PageHelper;
 /**
  * 
  * @author WangGang
@@ -18,12 +20,16 @@ public class IdcUserServiceImpl implements IdcUserService {
 	private IdcUserMapper idcUserMapper;
 
 	@Override
-	public List<IdcUser> findAllUsers() {
-		return idcUserMapper.findAllUsers();
+	public List<IdcUser> findAllUsers(int pageNum, int pageSize) throws Exception {
+		if(pageNum == 0) pageNum = ResultCode.DEFAULT_PAGE_NUM;
+		if(pageSize == 0) pageSize = ResultCode.DEFAULT_PAGE_SIZE;
+		PageHelper.startPage(pageNum, pageSize);
+		List<IdcUser> list = idcUserMapper.findAllUsers();
+		return list;
 	}
 
 	@Override
-	public IdcUser findById(long id) {
+	public IdcUser findById(long id) throws Exception {
 		if(id <= 0){
 			return null;
 		}
@@ -31,7 +37,7 @@ public class IdcUserServiceImpl implements IdcUserService {
 	}
 
 	@Override
-	public IdcUser findByModel(IdcUser u) {
+	public IdcUser findByModel(IdcUser u) throws Exception {
 		if(u == null){
 			return null;
 		}
@@ -39,7 +45,7 @@ public class IdcUserServiceImpl implements IdcUserService {
 	}
 
 	@Override
-	public int add(IdcUser u) {
+	public int add(IdcUser u) throws Exception {
 		if(u == null){
 			return 0;
 		}
@@ -47,7 +53,7 @@ public class IdcUserServiceImpl implements IdcUserService {
 	}
 
 	@Override
-	public int modify(IdcUser u) {
+	public int modify(IdcUser u) throws Exception {
 		if(u == null || u.getId() <= 0){
 			return 0;
 		}

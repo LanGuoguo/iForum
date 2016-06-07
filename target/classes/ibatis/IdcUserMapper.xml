@@ -34,7 +34,7 @@
     <!-- where 
       is_deleted = 'n' -->
     order by
-      id
+      id desc
   </select>
   
   <select id="findById" parameterType="java.lang.Long" resultMap="idcUser">
@@ -74,12 +74,15 @@
     from
       idc_user
     <where>
-      <!-- is_deleted = 'n' -->
+      <!-- is_deleted = 'n' -->1 = 1 
       <if test="userCode != null">and user_code = #{userCode}</if>
       <if test="userName != null">and user_name = #{userName}</if>
       <if test="userMail != null">and user_mail = #{userMail}</if>
       <if test="userPwd != null">and user_pwd = #{userPwd}</if>
       <if test="userPhone != null">and user_phone = #{userPhone}</if>
+      <if test="userLevel != null">and user_phone = #{userLevel}</if>
+      <if test="userGroup != null">and user_phone = #{userGroup}</if>
+      <if test="isDeleted != null">and is_deleted = #{isDeleted}</if>
     </where>
   </select>
 

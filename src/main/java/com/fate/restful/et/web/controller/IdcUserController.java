@@ -17,8 +17,11 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fate.restful.et.common.bean.ReqResult;
+import com.fate.restful.et.common.bean.ResultCode;
+import com.fate.restful.et.common.util.Exception2String;
 import com.fate.restful.et.domain.IdcUser;
 import com.fate.restful.et.service.IdcUserService;
+import com.github.pagehelper.PageInfo;
 
 /**
  * 
@@ -34,18 +37,28 @@ public class IdcUserController {
 	 * Retrieve All Users
 	 * @return
 	 */
-	@RequestMapping(value="/restApi/idcUsers", method=RequestMethod.GET)
-	public ResponseEntity<ReqResult> ListAllUsers(){
+	@RequestMapping(value="/restApi/idcUsers", method=RequestMethod.POST)
+	public ResponseEntity<ReqResult> ListAllUsers(HttpServletRequest request, @RequestBody IdcUser u){
 		ReqResult rst = new ReqResult();
-		List<IdcUser> list = idcUserService.findAllUsers();
-		rst.setResultCode(ReqResult.CODE_SUCCESS);
-		rst.setReturnObject(list);
-		if (CollectionUtils.isEmpty(list)) {
-			rst.setResultCode(204);
-			rst.setReturnMessage("没有数据");
+		rst.setResultCode(ResultCode.HTTP_SUCCESS);
+		List<IdcUser> list = null;
+		PageInfo<IdcUser> page = null;
+		try {
+			list = idcUserService.findAllUsers(u.getPagination().getCurrentPage(), u.getPagination().getPageSize());
+			page = new PageInfo<IdcUser>(list);
+			rst.setReturnObject(page);
+			if (CollectionUtils.isEmpty(list)) {
+				rst.setResultCode(ResultCode.HTTP_DB_NO_CONTENT);
+				rst.setReturnMessage("没有数据");
+			}
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		} catch (Exception e) {
+//			e.printStackTrace();
+			rst.setResultCode(ResultCode.HTTP_SYSTEM_ERROR);
+			rst.setReturnObject("IdcUserController.ListAllUsers():" + e.toString());
+			rst.setReturnMessage(Exception2String.getErrorInfoFromException(e));
 			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 		}
-		return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 	}
 	
 	/**
@@ -54,11 +67,30 @@ public class IdcUserController {
 	 * @return
 	 */
 	@RequestMapping(value="/restApi/idcUser/{id}", method=RequestMethod.GET)
-	public ResponseEntity<IdcUser> getById(@PathVariable("id") long id){
-		if(id <= 0) return new ResponseEntity<IdcUser>(HttpStatus.PRECONDITION_FAILED);
-		IdcUser u = idcUserService.findById(id);
-		if(u == null) return new ResponseEntity<IdcUser>(HttpStatus.NO_CONTENT);
-		return new ResponseEntity<IdcUser>(u, HttpStatus.OK);
+	public ResponseEntity<ReqResult> getById(@PathVariable("id") long id){
+		ReqResult rst = new ReqResult();
+		rst.setResultCode(ResultCode.HTTP_SUCCESS);
+		if(id <= 0) {
+			rst.setResultCode(ResultCode.HTTP_INVALID_PARAM);
+			rst.setReturnMessage("无效id，不能小于等于0");
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		} 
+		IdcUser u = null;
+		try {
+			u = idcUserService.findById(id);
+			rst.setReturnObject(u);
+			if(u == null) {
+				rst.setResultCode(ResultCode.HTTP_DB_NO_CONTENT);
+				rst.setReturnMessage("没有数据");
+			}
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		} catch (Exception e) {
+//			e.printStackTrace();
+			rst.setResultCode(ResultCode.HTTP_SYSTEM_ERROR);
+			rst.setReturnObject("IdcUserController.getById():" + e.toString());
+			rst.setReturnMessage(Exception2String.getErrorInfoFromException(e));
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		}
 	}
 	
 	/**
@@ -68,11 +100,33 @@ public class IdcUserController {
 	 * @return
 	 */
 	@RequestMapping(value="/restApi/idcUser/model", method=RequestMethod.POST)
-	public ResponseEntity<IdcUser> getByModel(HttpServletRequest request, @RequestBody IdcUser u){
-		if(u == null) return new ResponseEntity<IdcUser>(HttpStatus.PRECONDITION_FAILED);
-		IdcUser rst = idcUserService.findByModel(u);
-		if(rst == null) return new ResponseEntity<IdcUser>(HttpStatus.NO_CONTENT);
-		return new ResponseEntity<IdcUser>(rst, HttpStatus.OK);
+	public ResponseEntity<ReqResult> getByModel(HttpServletRequest request, @RequestBody IdcUser u){
+		ReqResult rst = new ReqResult();
+		rst.setResultCode(ResultCode.HTTP_SUCCESS);
+		if(StringUtils.isNotEmpty(u.getUserCode()) || StringUtils.isNotEmpty(u.getUserName())
+				|| StringUtils.isNotEmpty(u.getUserPwd()) || StringUtils.isNotEmpty(u.getUserPhone())
+				|| StringUtils.isNotEmpty(u.getUserMail()) || StringUtils.isNotEmpty(u.getUserLevel())
+				|| StringUtils.isNotEmpty(u.getUserGroup()) || StringUtils.isNotEmpty(u.getIsDeleted())) {
+			rst.setResultCode(ResultCode.HTTP_INVALID_PARAM);
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		}
+		IdcUser ru = null;
+		try {
+			ru = idcUserService.findByModel(u);
+			rst.setReturnObject(ru);
+			if(ru == null) {
+				rst.setResultCode(ResultCode.HTTP_DB_NO_CONTENT);
+				rst.setReturnMessage("没有数据");
+			}
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		} catch (Exception e) {
+//			e.printStackTrace();
+			rst.setResultCode(ResultCode.HTTP_SYSTEM_ERROR);
+			rst.setReturnObject("IdcUserController.getByModel():" + e.toString());
+			rst.setReturnMessage(Exception2String.getErrorInfoFromException(e));
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		}
+		
 	}
 	
 	/**
@@ -84,44 +138,49 @@ public class IdcUserController {
 	@RequestMapping(value="/restApi/idcUser/add", method=RequestMethod.POST)
 	public ResponseEntity<ReqResult> add(HttpServletRequest request, @RequestBody IdcUser u){
 		ReqResult rst = new ReqResult();
-		rst.setResultCode(ReqResult.CODE_SUCCESS);
+		rst.setResultCode(ResultCode.HTTP_SUCCESS);
 		if (StringUtils.isEmpty(u.getUserName()) || StringUtils.isEmpty(u.getUserMail())) {
-			rst.setResultCode(600);
-			rst.setReturnObject("");
-			rst.setReturnMessage("IdcUser param can not be null");
+			rst.setResultCode(ResultCode.HTTP_INVALID_PARAM);
+			rst.setReturnMessage("缺少必要参数");
 			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 		}
 		IdcUser check = null;
-		for (int i = 0; i < 2; i++) {
-			check = new IdcUser();
-			if(i == 0) check.setUserName(u.getUserName());
-			if(i == 1) check.setUserMail(u.getUserMail());
-			if (idcUserService.findByModel(check) != null) {
-				rst.setResultCode(601);
-				rst.setReturnObject("");
-				rst.setReturnMessage("Duplicate");
-				return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		try {
+			for (int i = 0; i < 2; i++) {
+				check = new IdcUser();
+				String[] duplicateStr = new String[]{"用户名", "邮箱"};
+				if(i == 0) check.setUserName(u.getUserName());
+				if(i == 1) check.setUserMail(u.getUserMail());
+				if (idcUserService.findByModel(check) != null) {
+					rst.setResultCode(ResultCode.HTTP_DB_DUPLICATE);
+					rst.setReturnMessage(duplicateStr[i] + "重复");
+					return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+				}
 			}
-		}
-		if(StringUtils.isEmpty(u.getUserCode())) {
-			IdcUser u4Code = new IdcUser();
-			String uCode = "UC_" + RandomStringUtils.randomAlphanumeric(8).toUpperCase();
-			u4Code.setUserCode(uCode);
-			while(idcUserService.findByModel(u4Code) != null){
-				uCode = "UC_" + RandomStringUtils.randomAlphanumeric(8).toUpperCase();
+			if(StringUtils.isEmpty(u.getUserCode())) {
+				IdcUser u4Code = new IdcUser();
+				String uCode = "UC_" + RandomStringUtils.randomAlphanumeric(8).toUpperCase();
 				u4Code.setUserCode(uCode);
+				while(idcUserService.findByModel(u4Code) != null){
+					uCode = "UC_" + RandomStringUtils.randomAlphanumeric(8).toUpperCase();
+					u4Code.setUserCode(uCode);
+				}
+				u.setUserCode(uCode);
 			}
-			u.setUserCode(uCode);
+			if(StringUtils.isEmpty(u.getUserLevel())) u.setUserLevel("normal");
+			if(StringUtils.isEmpty(u.getUserGroup())) u.setUserGroup("basic");
+			int line = idcUserService.add(u);
+			if (line <= 0) {
+				rst.setResultCode(ResultCode.HTTP_EXECUTE_DB_ERROR);
+				rst.setReturnMessage("新增失败！操作数据库受影响行数为：0");
+			}
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		} catch (Exception e) {
+			rst.setResultCode(ResultCode.HTTP_SYSTEM_ERROR);
+			rst.setReturnObject("IdcUserController.add():" + e.toString());
+			rst.setReturnMessage(Exception2String.getErrorInfoFromException(e));
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 		}
-		if(StringUtils.isEmpty(u.getUserLevel())) u.setUserLevel("normal");
-		if(StringUtils.isEmpty(u.getUserGroup())) u.setUserGroup("basic");
-		int line = idcUserService.add(u);
-		if (line <= 0) {
-			rst.setResultCode(700);
-			rst.setReturnObject("");
-			rst.setReturnMessage("add failed");
-		}
-		return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 	}
 	
 	/**
@@ -131,12 +190,34 @@ public class IdcUserController {
 	 * @return
 	 */
 	@RequestMapping(value="/restApi/idcUser/modify", method=RequestMethod.PUT)
-	public ResponseEntity<String> modify(HttpServletRequest request, @RequestBody IdcUser u){
-		if(u == null) return new ResponseEntity<String>("IdcUser param can not be null", HttpStatus.NOT_MODIFIED);
-		if(u.getId() <= 0) return new ResponseEntity<String>("IdcUser.id can not less than or equal 0", HttpStatus.NOT_MODIFIED);
-		int line = idcUserService.modify(u);
-		if(line <= 0) return new ResponseEntity<String>(HttpStatus.NOT_MODIFIED);
-		return new ResponseEntity<String>(HttpStatus.ACCEPTED);
+	public ResponseEntity<ReqResult> modify(HttpServletRequest request, @RequestBody IdcUser u){
+		ReqResult rst = new ReqResult();
+		rst.setResultCode(ResultCode.HTTP_SUCCESS);
+		if(StringUtils.isNotEmpty(u.getUserCode()) || StringUtils.isNotEmpty(u.getUserName())
+				|| StringUtils.isNotEmpty(u.getUserPwd()) || StringUtils.isNotEmpty(u.getUserPhone())
+				|| StringUtils.isNotEmpty(u.getUserMail()) || StringUtils.isNotEmpty(u.getUserLevel())
+				|| StringUtils.isNotEmpty(u.getUserGroup()) || StringUtils.isNotEmpty(u.getIsDeleted())) {
+			rst.setResultCode(ResultCode.HTTP_INVALID_PARAM);
+			rst.setReturnMessage("参数无效");
+			if(u.getId() <= 0) rst.setReturnMessage("参数无效，ID不能小于等于0");
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		}
+		int line = 0;
+		try {
+			line = idcUserService.modify(u);
+			if(line <= 0) {
+				rst.setResultCode(ResultCode.HTTP_EXECUTE_DB_ERROR);
+				rst.setReturnMessage("修改失败！操作数据库受影响行数为：0");
+			}
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		} catch (Exception e) {
+//			e.printStackTrace();
+			rst.setResultCode(ResultCode.HTTP_SYSTEM_ERROR);
+			rst.setReturnObject("IdcUserController.modify():" + e.toString());
+			rst.setReturnMessage(Exception2String.getErrorInfoFromException(e));
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		}
+		
 	}
 	
 	/**
@@ -148,26 +229,32 @@ public class IdcUserController {
 	@RequestMapping(value="/restApi/idcUser/delete", method=RequestMethod.PUT)
 	public ResponseEntity<ReqResult> delete(HttpServletRequest request, @RequestBody List<Long> ids){
 		ReqResult rst = new ReqResult();
-		rst.setResultCode(1100);
+		rst.setResultCode(ResultCode.HTTP_SUCCESS);
 		rst.setReturnMessage("删除成功！");
 		if(CollectionUtils.isEmpty(ids)) {
-			rst.setResultCode(600);
-			rst.setReturnMessage("IdcUser param can not be null");
+			rst.setResultCode(ResultCode.HTTP_OUT_OF_PARAM);
+			rst.setReturnMessage("缺少必要参数：id");
 			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 		}
 		IdcUser u = null;
-		int line = 0;
-		for (Long id : ids) {
-			u = new IdcUser();
-			u.setId(id);
-			u.setIsDeleted("y");
-			line += idcUserService.modify(u);
+		try {
+			int line = 0;
+			for (Long id : ids) {
+				u = new IdcUser();
+				u.setId(id);
+				u.setIsDeleted("y");
+				line += idcUserService.modify(u);
+			}
+			if(line <= 0) {
+				rst.setResultCode(ResultCode.HTTP_EXECUTE_DB_ERROR);
+				rst.setReturnMessage("删除失败！操作数据库受影响行数为：0");
+			}
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
+		} catch (Exception e) {
+			rst.setResultCode(ResultCode.HTTP_SYSTEM_ERROR);
+			rst.setReturnObject("IdcUserController.delete():" + e.toString());
+			rst.setReturnMessage(Exception2String.getErrorInfoFromException(e));
+			return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 		}
-		
-		if(line <= 0) {
-			rst.setResultCode(700);
-			rst.setReturnMessage("删除失败！操作数据库受影响行数为：0");
-		}
-		return new ResponseEntity<ReqResult>(rst, HttpStatus.OK);
 	}
 }
